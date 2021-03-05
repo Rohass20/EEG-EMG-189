@@ -3,10 +3,11 @@ from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import pandas as pd
 import multiprocessing as mp
+from scipy.signal import resample
 
 
 
-class EegData:
+class DataLoader:
 
     def __init__(self, participant, session):
         '''
@@ -109,11 +110,13 @@ class EegData:
         eeg, emg
         '''
         if sigtype == 'both':
-            both = True
+            self.both = True
+        else:
+            self.both = False
 
         data = self.data['participant {}'.format(str(participant))]
 
-        if both:
+        if self.both:
             eegsessions = []
             emgsessions = []
         else:
@@ -126,7 +129,7 @@ class EegData:
                     signal = trial['eeg']
                 elif sigtype == 'emg':
                     signal = trial['emg']
-                elif both:
+                elif self.both:
                     eegsignal = trial['eeg']
                     emgsignal = trial['emg']
                 else:
@@ -139,7 +142,7 @@ class EegData:
                 if w_class == 4:
                     w_class = 3
         
-                if both:
+                if self.both:
                     eegarr = eegsignal.to_numpy()
                     emgarr = emgsignal.to_numpy()
                 else:
@@ -148,7 +151,7 @@ class EegData:
                 w_encoding = 1*(np.array([(w_class == 1),(w_class == 2),(w_class == 3)]))
                 t_encoding = 1*(np.array([(t_class == 1),(t_class == 2),(t_class == 3)]))
 
-                if both:
+                if self.both:
                     e_w_encoding = np.vstack([w_encoding]*eegarr.shape[0])
                     e_t_encoding = np.vstack([t_encoding]*eegarr.shape[0])
                     m_w_encoding = np.vstack([w_encoding]*emgarr.shape[0])
@@ -157,14 +160,14 @@ class EegData:
                     w_encoding = np.vstack([w_encoding]*arr.shape[0])
                     t_encoding = np.vstack([t_encoding]*arr.shape[0])
 
-                if both:
+                if self.both:
                     eegarr = np.hstack((eegarr,e_w_encoding,e_t_encoding))
                     emgarr = np.hstack((emgarr,m_w_encoding,m_t_encoding))
                 else:
                     arr = np.hstack((arr,w_encoding,t_encoding))
 
                 if first:
-                    if both:
+                    if self.both:
                         all_eeg_arr = []
                         all_emg_arr = []
                         all_eeg_arr.append(eegarr)
@@ -175,21 +178,114 @@ class EegData:
                     first = False
                     continue
                 else:
-                    if both:
+                    if self.both:
                         all_eeg_arr.append(eegarr)
                         all_emg_arr.append(emgarr)
                     else:
                         all_arr.append(arr)
-            if both:
+            if self.both:
                 eegsessions.append(all_eeg_arr)
                 emgsessions.append(all_emg_arr)
             else:
                 sessions.append(all_arr)
-        if both:
-            return eegsessions, emgsessions
+        if self.both:
+            self.eegsessions = eegsessions
+            self.emgsessions = emgsessions
         else:
-            return sessions
+            self.sessions = sessions
+        
+        return self.resample_and_store_tuple()
 
+    def resample_and_store_tuple(self):
+        self.find_min_samples()
+        if self.both:
+            first = True
+            for session in self.eegsessions:
+                for trial in session:
+                    resampled_columns = []
+                    column_list = np.hsplit(trial, trial.shape[1])
+                    for array in column_list:
+                        array_resampled = resample(x=array, num=self.min_eeg_samples)
+                        resampled_columns.append(array_resampled) 
+                    if first:
+                        self.all_eeg_trials = np.hstack(resampled_columns)
+                        self.eeg_weight_encodings = self.all_eeg_trials[0,32:35]
+                        self.eeg_texture_encodings = self.all_eeg_trials[0,35:]
+                        first = False
+                    else:
+                        this_trial = np.hstack(resampled_columns)
+                        self.all_eeg_trials = np.dstack((self.all_eeg_trials, this_trial))
+                        self.eeg_weight_encodings = np.vstack((self.eeg_weight_encodings, this_trial[0,32:35]))
+                        self.eeg_texture_encodings = np.vstack((self.eeg_texture_encodings, this_trial[0,35:]))
+            self.eeg_tuple = (self.all_eeg_trials, self.eeg_weight_encodings, self.eeg_texture_encodings)
+            first = True
+            for session in self.emgsessions:
+                for trial in session:
+                    resampled_columns = []
+                    column_list = np.hsplit(trial, trial.shape[1])
+                    for array in column_list:
+                        array_resampled = resample(x=array, num=self.min_emg_samples)
+                        resampled_columns.append(array_resampled) 
+                    if first:
+                        self.all_emg_trials = np.hstack(resampled_columns)
+                        self.emg_weight_encodings = self.all_emg_trials[0,5:8]
+                        self.emg_texture_encodings = self.all_emg_trials[0,8:]
+                        first = False
+                    else:
+                        this_trial = np.hstack(resampled_columns)
+                        self.all_emg_trials = np.dstack((self.all_emg_trials, this_trial))
+                        self.emg_weight_encodings = np.vstack((self.emg_weight_encodings, this_trial[0,5:8]))
+                        self.emg_texture_encodings = np.vstack((self.emg_texture_encodings, this_trial[0,8:]))
+            self.emg_tuple = (self.all_emg_trials, self.emg_weight_encodings, self.emg_texture_encodings)
+        else:
+            first = True
+            for session in self.sessions:
+                for trial in session:
+                    resampled_columns = []
+                    column_list = np.hsplit(trial, trial.shape[1])
+                    for array in column_list:
+                        array_resampled = resample(x=array, num=self.min_samples)
+                        resampled_columns.append(array_resampled) 
+                    if first:
+                        self.all_trials = np.hstack(resampled_columns)
+                        self.weight_encodings = self.all_trials[0,32:35]
+                        self.texture_encodings = self.all_trials[0,35:]
+                        first = False
+                    else:
+                        this_trial = np.hstack(resampled_columns)
+                        self.all_trials = np.dstack((self.all_trials, this_trial))
+                        self.weight_encodings = np.vstack((self.weight_encodings, this_trial[0,32:35]))
+                        self.texture_encodings = np.vstack((self.texture_encodings, this_trial[0,35:]))
+            self.tuple = (self.all_trials, self.weight_encodings, self.texture_encodings)
+        if self.both:
+            return self.eeg_tuple, self.emg_tuple
+        else:
+            return self.tuple
+
+
+    def find_min_samples(self):
+        if self.both:
+            min_eeg_samples = self.eegsessions[0][0].shape[0]
+            for session in self.eegsessions:
+                for trial in session:
+                    if trial.shape[0] < min_eeg_samples:
+                        min_eeg_samples = trial.shape[0]
+            min_emg_samples = self.emgsessions[0][0].shape[0]
+            for session in self.emgsessions:
+                for trial in session:
+                    if trial.shape[0] < min_emg_samples:
+                        min_emg_samples = trial.shape[0]     
+            self.min_eeg_samples = min_eeg_samples
+            self.min_emg_samples = min_emg_samples
+        else:
+            min_samples = self.sessions[0][0].shape[0]
+            for session in self.sessions:
+                for trial in session:
+                    if trial.shape[0] < min_samples:
+                        min_samples = trial.shape[0]
+            self.min_samples = min_samples
+    
+    
 
     """
     def multi(self,n):

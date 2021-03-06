@@ -284,7 +284,201 @@ class DataLoader:
                     if trial.shape[0] < min_samples:
                         min_samples = trial.shape[0]
             self.min_samples = min_samples
+                        
+    def gather_sorted_session_data(self,weightconstant,textureconstant):
+        """
+        PARAMETERS: 
+            weightconstant: specified weight to hold constant when appending texture data
+            textureconstant: specified weight to hold constant when appending texture data
+        RETURN: 
+            List of:
+                3 lists for each weight class, holding a specified texture constant
+                3 lists for each texture class, holding a specified weight constant
+        DESCRIPTION: returns lists of emg data to be used 
+                     for computing averages across sessions
+                     recommonded parameters are 330 and sandpaper
+        """
+
+        weight1_emgs = []
+        weight2_emgs = []
+        weight3_emgs = []
+
+        texture1_emgs = []
+        texture2_emgs = []
+        texture3_emgs = []
+
+        weightclass1 = 165 #grams
+        weightclass2 = 330
+        weightclass3 = 660
+        weightconstant = weightconstant
+
+        texture1 = 'suede'
+        texture2 = 'sandpaper'
+        texture3 = 'silk'
+        textureconstant = textureconstant
+
+        participant = 'participant ' + str(self.participant)
+        
+        data = self.get_data()
+
+        #sorting emg data by weight class
+
+        for j in range(len(data[participant])):
+
+            session = 'session ' + str(j+1)
+
+            for i in range(len(data[participant][session])):
+
+                trial = 'trial ' + str(i+1)
+
+                #texture 2 default
+
+                if (data[participant][session][trial]['weight_in_grams'] == weightclass1 and 
+                    data[participant][session][trial]['texture'] == textureconstant ):
+
+                    weight1_emgs.append(data[participant][session][trial]['emg'])
+
+                elif (data[participant][session][trial]['weight_in_grams'] == weightclass2 and 
+                    data[participant][session][trial]['texture'] == textureconstant ):
+
+                    weight2_emgs.append(data[participant][session][trial]['emg'])
+
+                elif (data[participant][session][trial]['weight_in_grams'] == weightclass3 and 
+                    data[participant][session][trial]['texture'] == textureconstant ):
+
+                    weight3_emgs.append(data[participant][session][trial]['emg'])
+
+        #############################################################################################                      
+
+                if (data[participant][session][trial]['weight_in_grams'] == weightconstant and 
+                    data[participant][session][trial]['texture'] == texture1 ):
+
+                    texture1_emgs.append(data[participant][session][trial]['emg'])
+
+                elif (data[participant][session][trial]['weight_in_grams'] == weightconstant and 
+                    data[participant][session][trial]['texture'] == texture2 ):
+
+                    texture2_emgs.append(data[participant][session][trial]['emg'])
+
+                elif (data[participant][session][trial]['weight_in_grams'] == weightconstant and 
+                    data[participant][session][trial]['texture'] == texture3 ):
+
+                    texture3_emgs.append(data[participant][session][trial]['emg'])
+
+        ret_dict = {'weight1_emg':weight1_emgs,
+                   'weight2_emg':weight2_emgs,
+                   'weight3_emg':weight3_emgs,
+                   'texture1_emg':texture1_emgs,
+                   'texture2_emg':texture2_emgs,
+                   'texture3_emg':texture3_emgs}
+        
+        
+        return ret_dict
+
     
+    def get_averages(self, session_data):
+        
+        """
+        PARAMETERS: dictionary returned from function: gather_sorted_session_data
+        
+        RETURNS: dictionary of average emg data across sessions
+                note: averages of each texture hold a certain prev specified weight constant
+                        and vice versa
+                        
+        DESCRIPTION: main purpose to be used for average plots
+        """
+
+        weight_sum1 = session_data['weight1_emg'][0] #weight1_emgs[0] 
+        weight_sum2 = session_data['weight2_emg'][0]
+        weight_sum3 = session_data['weight3_emg'][0]
+
+
+        for i in range(len(session_data['weight1_emg'])):
+
+            if(i==0): continue
+
+            weight_sum1 += session_data['weight1_emg'][i]
+
+        weight_avg1 = weight_sum1/len(session_data['weight1_emg'])
+
+
+        for i in range(len(session_data['weight2_emg'])):
+
+            if(i==0): continue
+
+            weight_sum2 += session_data['weight2_emg'][i]
+
+        weight_avg2 = weight_sum2/len(session_data['weight2_emg'])
+
+        for i in range(len(session_data['weight3_emg'])):
+
+            if(i==0): continue
+
+            weight_sum3 += session_data['weight3_emg'][i]
+
+        weight_avg3 = weight_sum3/len(session_data['weight3_emg'])
+
+    ##################################################################    
+
+        texture_sum1 = session_data['texture1_emg'][0]
+        texture_sum2 = session_data['texture2_emg'][0]
+        texture_sum3 = session_data['texture3_emg'][0]
+
+        for i in range(len(session_data['texture1_emg'])):
+
+            if(i==0): continue
+
+            texture_sum1 += session_data['texture1_emg'][i]
+
+        texture_avg1 = texture_sum1/len(session_data['texture1_emg'])
+
+
+        for i in range(len(session_data['texture2_emg'])):
+
+            if(i==0): continue
+
+            texture_sum2 += session_data['texture2_emg'][i]
+
+        texture_avg2 = texture_sum2/len(session_data['texture2_emg'])
+
+        for i in range(len(session_data['texture3_emg'])):
+
+            if(i==0): continue
+
+            texture_sum3 += session_data['texture3_emg'][i]
+
+        texture_avg3 = texture_sum3/len(session_data['texture3_emg'])
+
+    ##################################################################
+
+        texture_dict = {'weight1_avg':weight_avg1,
+                       'weight2_avg':weight_avg2,
+                       'weight3_avg':weight_avg3,
+                       'texture1_avg':texture_avg1,
+                       'texture2_avg':texture_avg2,
+                       'texture3_avg':texture_avg3}
+
+        return texture_dict
+
+    def plot_avg_emg(self,session_avg,class_spec,muscle=''):
+        """
+        Muscle specifications:
+            Anterior Deltoid, Brachoradial, Flexor Digitorum, 
+            Common Extensor Digitorum, First Dorsal Interosseus 
+        """
+        if(muscle==''): #plot all
+            plt.plot(session_avg[class_spec])
+            
+        else:
+            plt.plot(session_avg[class_spec][muscle])
+        
+        plt.title(class_spec + ' ' + muscle)
+        
+    def get_variance(self,data):
+        '''
+        Compute and return variance
+        '''
+        return np.var(data)
     
 
     """

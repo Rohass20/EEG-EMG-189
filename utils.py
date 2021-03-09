@@ -200,42 +200,50 @@ class DataLoader:
         self.find_min_samples()
         if self.both:
             first = True
+            self.trial_count = 0
             for session in self.eegsessions:
                 for trial in session:
+                    self.trial_count += 1
                     resampled_columns = []
                     column_list = np.hsplit(trial, trial.shape[1])
+                    weight_encoding = np.hstack(column_list[32:35])[0]
+                    texture_encoding = np.hstack(column_list[35:])[0]
+                    column_list = column_list[:32]
                     for array in column_list:
                         array_resampled = resample(x=array, num=self.min_eeg_samples)
                         resampled_columns.append(array_resampled) 
                     if first:
                         self.all_eeg_trials = np.hstack(resampled_columns)
-                        self.eeg_weight_encodings = self.all_eeg_trials[0,32:35]
-                        self.eeg_texture_encodings = self.all_eeg_trials[0,35:]
+                        self.eeg_weight_encodings = weight_encoding
+                        self.eeg_texture_encodings = texture_encoding
                         first = False
                     else:
                         this_trial = np.hstack(resampled_columns)
                         self.all_eeg_trials = np.dstack((self.all_eeg_trials, this_trial))
-                        self.eeg_weight_encodings = np.vstack((self.eeg_weight_encodings, this_trial[0,32:35]))
-                        self.eeg_texture_encodings = np.vstack((self.eeg_texture_encodings, this_trial[0,35:]))
+                        self.eeg_weight_encodings = np.vstack((self.eeg_weight_encodings, weight_encoding))
+                        self.eeg_texture_encodings = np.vstack((self.eeg_texture_encodings, texture_encoding))
             self.eeg_tuple = (self.all_eeg_trials, self.eeg_weight_encodings, self.eeg_texture_encodings)
             first = True
             for session in self.emgsessions:
                 for trial in session:
                     resampled_columns = []
                     column_list = np.hsplit(trial, trial.shape[1])
+                    weight_encoding = np.hstack(column_list[5:8])[0]
+                    texture_encoding = np.hstack(column_list[8:])[0]
+                    column_list = column_list[:5]
                     for array in column_list:
                         array_resampled = resample(x=array, num=self.min_emg_samples)
                         resampled_columns.append(array_resampled) 
                     if first:
                         self.all_emg_trials = np.hstack(resampled_columns)
-                        self.emg_weight_encodings = self.all_emg_trials[0,5:8]
-                        self.emg_texture_encodings = self.all_emg_trials[0,8:]
+                        self.emg_weight_encodings = weight_encoding
+                        self.emg_texture_encodings = texture_encoding
                         first = False
                     else:
                         this_trial = np.hstack(resampled_columns)
                         self.all_emg_trials = np.dstack((self.all_emg_trials, this_trial))
-                        self.emg_weight_encodings = np.vstack((self.emg_weight_encodings, this_trial[0,5:8]))
-                        self.emg_texture_encodings = np.vstack((self.emg_texture_encodings, this_trial[0,8:]))
+                        self.emg_weight_encodings = np.vstack((self.emg_weight_encodings, weight_encoding))
+                        self.emg_texture_encodings = np.vstack((self.emg_texture_encodings, texture_encoding))
             self.emg_tuple = (self.all_emg_trials, self.emg_weight_encodings, self.emg_texture_encodings)
         else:
             first = True
@@ -247,19 +255,22 @@ class DataLoader:
                         array_resampled = resample(x=array, num=self.min_samples)
                         resampled_columns.append(array_resampled) 
                     if first:
-                        self.all_trials = np.hstack(resampled_columns)
-                        self.weight_encodings = self.all_trials[0,32:35]
-                        self.texture_encodings = self.all_trials[0,35:]
+                        this_trial = np.hstack(resampled_columns)
+                        self.all_trials = this_trial[:,:32]
+                        self.weight_encodings = this_trial[0,32:35]
+                        self.texture_encodings = this_trial[0,35:]
                         first = False
                     else:
                         this_trial = np.hstack(resampled_columns)
-                        self.all_trials = np.dstack((self.all_trials, this_trial))
+                        self.all_trials = np.dstack((self.all_trials, this_trial[:,:32]))
                         self.weight_encodings = np.vstack((self.weight_encodings, this_trial[0,32:35]))
                         self.texture_encodings = np.vstack((self.texture_encodings, this_trial[0,35:]))
             self.tuple = (self.all_trials, self.weight_encodings, self.texture_encodings)
         if self.both:
+            self.data_loaded = True
             return self.eeg_tuple, self.emg_tuple
         else:
+            self.data_loaded = True
             return self.tuple
 
 
@@ -480,6 +491,85 @@ class DataLoader:
         '''
         return np.var(data)
     
+    def return_subset_for_nn(self, sigtype, weights, textures):
+        combos = []
+        for weight in list(weights):
+            for texture in list(textures):
+                combos.append((weight, texture))
+        
+        self.filtered_trial_count = 0
+        if sigtype == 'eeg':
+            first = True
+            for i, array in enumerate(np.dsplit(self.eeg_tuple[0], self.trial_count)):
+                for combo in combos:
+                    if (self.eeg_tuple[1][i, combo[0]-1] != 0) and (self.eeg_tuple[2][i, combo[1]-1] != 0):
+                        self.filtered_trial_count += 1
+                        if first:
+                            self.filtered_eeg = array
+                            self.filtered_weights = self.eeg_tuple[1][i]
+                            self.filtered_textures = self.eeg_tuple[2][i]
+                            first = False
+                        else:
+                            self.filtered_eeg = np.dstack((self.filtered_eeg, array))
+                            self.filtered_weights = np.vstack((self.filtered_weights, self.eeg_tuple[1][i]))
+                            self.filtered_textures = np.vstack((self.filtered_textures, self.eeg_tuple[2][i]))
+            eegdata = [self.filtered_eeg, self.filtered_weights, self.filtered_textures]
+            return tuple(self.reshape_for_nn(eegdata, 'eeg'))   
+        elif sigtype == 'emg':
+            first = True
+            for i, array in enumerate(np.dsplit(self.emg_tuple[0], self.trial_count)):
+                for combo in combos:
+                    if (self.emg_tuple[1][i, combo[0]-1] != 0) and (self.emg_tuple[2][i, combo[1]-1] != 0):
+                        self.filtered_trial_count += 1
+                        if first:
+                            self.filtered_emg = array
+                            self.filtered_weights = self.emg_tuple[1][i]
+                            self.filtered_textures = self.emg_tuple[2][i]
+                            first = False
+                        else:
+                            self.filtered_emg = np.dstack((self.filtered_emg, array))
+                            self.filtered_weights = np.vstack((self.filtered_weights, self.emg_tuple[1][i]))
+                            self.filtered_textures = np.vstack((self.filtered_textures, self.emg_tuple[2][i]))
+            emgdata = [self.filtered_emg, self.filtered_weights, self.filtered_textures]
+            return tuple(self.reshape_for_nn(emgdata, 'emg'))
+        elif sigtype == 'both':
+            first = True
+            for i, array in enumerate(np.dsplit(self.eeg_tuple[0], self.trial_count)):
+                for combo in combos:
+                    if (self.eeg_tuple[1][i, combo[0]-1] != 0) and (self.eeg_tuple[2][i, combo[1]-1] != 0):
+                        self.filtered_trial_count += 1
+                        if first:
+                            self.filtered_eeg = array
+                            self.filtered_weights = self.eeg_tuple[1][i]
+                            self.filtered_textures = self.eeg_tuple[2][i]
+                            first = False
+                        else:
+                            self.filtered_eeg = np.dstack((self.filtered_eeg, array))
+                            self.filtered_weights = np.vstack((self.filtered_weights, self.eeg_tuple[1][i]))
+                            self.filtered_textures = np.vstack((self.filtered_textures, self.eeg_tuple[2][i]))
+            first = True
+            for i, array in enumerate(np.dsplit(self.emg_tuple[0], self.trial_count)):
+                for combo in combos:
+                    if (self.emg_tuple[1][i, combo[0]-1] != 0) and (self.emg_tuple[2][i, combo[1]-1] != 0):
+                        if first:
+                            self.filtered_emg = array
+                            first = False
+                        else:
+                            self.filtered_emg = np.dstack((self.filtered_emg, array))
+            eegdata = [self.filtered_eeg, self.filtered_weights, self.filtered_textures]
+            emgdata = [self.filtered_emg, self.filtered_weights, self.filtered_textures]
+            return tuple(self.reshape_for_nn(eegdata, 'eeg')), tuple(self.reshape_for_nn(emgdata, 'emg'))
+            
+    def reshape_for_nn(self, data, sigtype):
+        if sigtype == 'eeg':
+            data[0] = np.reshape(data[0], (self.min_eeg_samples, 32, self.filtered_trial_count, 1))
+            data[0] = np.moveaxis(data[0], 0, 2)
+            data[0] = np.moveaxis(data[0], 0, 1)
+        if sigtype == 'emg':
+            data[0] = np.reshape(data[0], (self.min_emg_samples, 5, self.filtered_trial_count, 1))
+            data[0] = np.moveaxis(data[0], 0, 2)
+            data[0] = np.moveaxis(data[0], 0, 1)
+        return data
 
     """
     def multi(self,n):

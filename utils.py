@@ -571,6 +571,27 @@ class DataLoader:
             data[0] = np.moveaxis(data[0], 0, 1)
         return data
 
+    def combine_eeg_emg(self, eegtuple, emgtuple):
+        min_size = eegtuple[0].shape[2]
+        emgtrials = emgtuple[0]
+        resampled_trials = []
+        for trial in list(np.split(emgtrials, emgtrials.shape[0])):
+            resampled_channels = []
+            for channel in list(np.split(trial, trial.shape[1], axis=1)):
+                one_d = np.squeeze(channel)
+                resampled_channel = resample(one_d, min_size)
+                resampled_channel = np.reshape(resampled_channel, (-1,1))
+                resampled_channels.append(resampled_channel)
+            resampled_trials.append(np.hstack(resampled_channels))
+        resampled_trials = np.dstack(resampled_trials)
+        resampled_trials = np.reshape(resampled_trials, (resampled_trials.shape[0], resampled_trials.shape[1], resampled_trials.shape[2], 1))
+        resampled_trials = np.moveaxis(np.moveaxis(resampled_trials, 0, 2), 0, 1)
+        resampled_trials.shape
+
+
+        combined = np.hstack((resampled_trials, eegtuple[0]))
+        return (combined, eegtuple[1], eegtuple[2])
+
     """
     def multi(self,n):
         if n == 1:

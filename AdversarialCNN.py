@@ -168,7 +168,7 @@ class AdversarialCNN:
                 es_best_weights = self.acnn.get_weights()
             else:
                 es_wait += 1
-                if es_wait >= 10:
+                if es_wait >= 100:
                     print('Early stopping...')
                     self.acnn.set_weights(es_best_weights)
                     return

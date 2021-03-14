@@ -10,10 +10,10 @@ import tensorflow as tf
 #main function
 def gridsearch(grid, eeg_list, emg_list):
     '''
-    input: param_dict. Example format: {'signal' : ['eeg','emg','both'],
+    input: gridded dictionary Example format: {'signal' : ['eeg','emg','both'],
                                         'class' : ['texture','weight'],
-                                        'participants' : ['1','2','loo_2'],  #loo = leave one out
-                                        'batch' : ['1']}
+                                        'participants' : ['1','2','loo_2']}  #loo = leave one out
+                                        
                         
            eeg_list, emg_list. obtained from: get_individiual_participant_data(9). 
              
@@ -27,10 +27,14 @@ def gridsearch(grid, eeg_list, emg_list):
                 
         if(params['participants'][0:4] == 'loo_'):
             
+            batch = 20
+            
             train, test = handle_leave_one_out(eeg_list, emg_list, params['signal'], 
                                                params['class'], int(params['participants'][4]) )
 
         else:
+            
+            batch = 1
             
             train, test = handle_single_participant(eeg_list, emg_list, params['signal'],
                                                     params['class'], int(params['participants']) )
@@ -43,7 +47,7 @@ def gridsearch(grid, eeg_list, emg_list):
 
             
         print('\n\nMODEL: ', params, '\n-----------------------------------------------------\n\n')
-        log = params['signal'] + '_' + params['class'] + '_participant' + params['participants'] + '_batch' + params['batch']
+        log = params['signal'] + '_' + params['class'] + '_participant' + params['participants']
         
         if not (os.path.isdir(log)):
             os.mkdir(log)
@@ -51,7 +55,7 @@ def gridsearch(grid, eeg_list, emg_list):
         net = AdversarialCNN( chans=chans, samples=train[0].shape[2], n_output=2, 
                          n_nuisance=3, architecture='EEGNet', adversarial=False, lam=0 )  
     
-        net.train( train, test, log = log, epochs=30, batch_size=int(params['batch']) )
+        net.train( train, test, log = log, epochs=30, batch_size=batch )
         
         model = net.acnn
         model.save(log+'_msave')

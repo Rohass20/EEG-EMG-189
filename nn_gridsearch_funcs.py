@@ -20,7 +20,6 @@ def gridsearch(grid, eeg_list, emg_list):
     
     
     eeg_list, emg_list = get_individiual_participant_data(9)
-
     '''
     
     for params in grid:
@@ -28,6 +27,7 @@ def gridsearch(grid, eeg_list, emg_list):
         if(params['participants'][0:4] == 'loo_'):
             
             batch = 20
+            epoch = 50
             
             train, test = handle_leave_one_out(eeg_list, emg_list, params['signal'], 
                                                params['class'], int(params['participants'][4]) )
@@ -35,6 +35,7 @@ def gridsearch(grid, eeg_list, emg_list):
         else:
             
             batch = 1
+            epoch = 25
             
             train, test = handle_single_participant(eeg_list, emg_list, params['signal'],
                                                     params['class'], int(params['participants']) )
@@ -55,11 +56,10 @@ def gridsearch(grid, eeg_list, emg_list):
         net = AdversarialCNN( chans=chans, samples=train[0].shape[2], n_output=2, 
                          n_nuisance=3, architecture='EEGNet', adversarial=False, lam=0 )  
     
-        net.train( train, test, log = log, epochs=30, batch_size=batch )
+        net.train( train, test, log = log, epochs=epoch, batch_size=batch )
         
         model = net.acnn
         model.save(log+'_msave')
-
     
 #######################################################################################    
 #supporting functions

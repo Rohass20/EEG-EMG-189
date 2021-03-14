@@ -34,7 +34,7 @@ def gridsearch(grid, eeg_list, emg_list):
 
         else:
             
-            batch = 1
+            batch = 5
             epoch = 25
             
             train, test = handle_single_participant(eeg_list, emg_list, params['signal'],

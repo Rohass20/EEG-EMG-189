@@ -162,7 +162,7 @@ class AdversarialCNN:
                         str(100*val_log[3]) + ',' + str(val_log[2]) + ',' + str(100*val_log[4]) + '\n')
 
             # Check early stopping criteria based on validation CLA loss - patience for 10 epochs
-            if np.less(val_log[1], es_best):
+            if np.less_equal(val_log[1], es_best):
                 es_wait = 0
                 es_best = val_log[1]
                 es_best_weights = self.acnn.get_weights()

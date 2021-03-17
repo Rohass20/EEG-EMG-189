@@ -1,5 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import Final_Presentation_Notebook_Funcs as nfuncs
+import os
+import pandas as pd
+from itertools import combinations
 
 def calc_averages(data,participant,signal):
     
@@ -183,7 +187,7 @@ def plot_eeg_diffs(eeg_list,pnum):
         i = i + 1
         
 
-def plot_eeg_psd_weights(participant): 
+def plot_eeg_psd_weights(data,participant): 
     #plotting Cz and C4
     
     cz = 'Cz'
@@ -221,7 +225,7 @@ def plot_eeg_psd_weights(participant):
     ax[1].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
     ax[1].legend(['165 Grams','660 Grams'],prop={'size': 12},loc="upper right")
     
-def plot_eeg_psd_textures(participant): 
+def plot_eeg_psd_textures(data,participant): 
     #plotting Cz and C4
     
     cz = 'Cz'
@@ -258,3 +262,268 @@ def plot_eeg_psd_textures(participant):
     ax[1].set_xlabel('Frequency (Hz)',fontsize = 12)
     ax[1].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
     ax[1].legend(['Suede','Silk'],prop={'size': 12},loc="upper right")
+    
+####
+
+def organize_NN_results():
+    weightdata = [folder for folder in os.listdir() if '_weight_' in folder and 'msave' not in folder]
+    texturedata = [folder for folder in os.listdir() if '_texture_' in folder and 'msave' not in folder]
+
+    participants = ['t' + str(i+1) for i in range(9)]
+    for i in range(4):
+        participants.append('loo_' + str(i+1))
+    types = ['eeg', 'emg', 'both']
+    combos = [(p, type) for p in participants for type in types]
+
+    weighttrainlosses = {}
+    weighttrainaccuracies = {}
+    weighttestlosses = {}
+    weighttestaccuracies = {}
+    for combo in combos:
+        for folder in weightdata:
+            if combo[0] in folder and combo[1] in folder:
+                dftrain = pd.read_csv(folder + '/train.csv', header=None)
+                dfval = pd.read_csv(folder + '/validation.csv', header=None)
+
+                weighttrainlosses[combo[0] + combo[1]] = dftrain[2].to_numpy()
+                weighttrainaccuracies[combo[0] + combo[1]] = dftrain[3].to_numpy()
+
+                weighttestlosses[combo[0] + combo[1]] = dfval[2].to_numpy()
+                weighttestaccuracies[combo[0] + combo[1]] = dfval[3].to_numpy()
+    
+
+    texturetrainlosses = {}
+    texturetrainaccuracies = {}
+    texturetestlosses = {}
+    texturetestaccuracies = {}
+    for combo in combos:
+        for folder in texturedata:
+            if combo[0] in folder and combo[1] in folder:
+                dftrain = pd.read_csv(folder + '/train.csv', header=None)
+                dfval = pd.read_csv(folder + '/validation.csv', header=None)
+
+                texturetrainlosses[combo[0] + combo[1]] = dftrain[2].to_numpy()
+                texturetrainaccuracies[combo[0] + combo[1]] = dftrain[3].to_numpy()
+
+                texturetestlosses[combo[0] + combo[1]] = dfval[2].to_numpy()
+                texturetestaccuracies[combo[0] + combo[1]] = dfval[3].to_numpy()
+
+
+
+    weight_df_test_acc = pd.DataFrame.from_dict(weighttestaccuracies, orient='index')
+    weight_df_test_loss = pd.DataFrame.from_dict(weighttestlosses, orient='index')
+    weight_df_train_acc = pd.DataFrame.from_dict(weighttrainaccuracies, orient='index')
+    weight_df_train_loss = pd.DataFrame.from_dict(weighttrainlosses, orient='index')
+
+    texture_df_test_acc = pd.DataFrame.from_dict(texturetestaccuracies, orient='index')
+    texture_df_test_loss = pd.DataFrame.from_dict(texturetestlosses, orient='index')
+    texture_df_train_acc = pd.DataFrame.from_dict(texturetrainaccuracies, orient='index')
+    texture_df_train_loss = pd.DataFrame.from_dict(texturetrainlosses, orient='index')
+
+
+    return weight_df_test_acc, weight_df_test_loss, weight_df_train_acc, weight_df_train_loss, texture_df_test_acc, texture_df_test_loss, texture_df_train_acc, texture_df_train_loss
+
+
+def plot_training_accuracy(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    
+    plt.figure(figsize=(20,10))
+    plt.plot(df[df.index.str.contains('eeg')].to_numpy().flatten(), label='eeg')
+    plt.plot(df[df.index.str.contains('emg')].to_numpy().flatten(), label='emg')
+    plt.plot(df[df.index.str.contains('both')].to_numpy().flatten(), label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Training Accuracy')
+    if 'loo' in participant:
+        plt.title('Leave One Out Training Accuracy On {}, Participant {}'.format(type,participant[4]))
+    else:
+        plt.title('Training Accuracy On {}, Participant {}'.format(type,participant[1]))
+    plt.legend()
+
+def plot_testing_accuracy(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+   
+    plt.figure(figsize=(20,10))
+    plt.plot(df[df.index.str.contains('eeg')].to_numpy().flatten(), label='eeg')
+    plt.plot(df[df.index.str.contains('emg')].to_numpy().flatten(), label='emg')
+    plt.plot(df[df.index.str.contains('both')].to_numpy().flatten(), label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Testing Accuracy')
+    if 'loo' in participant:
+        plt.title('Leave One Out Testing Accuracy On {}, Participant {}'.format(type,participant[4]))
+    else:
+        plt.title('Testing Accuracy On {}, Participant {}'.format(type,participant[1]))
+    plt.legend()
+
+def plot_training_loss(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    
+    plt.figure(figsize=(20,10))
+    plt.plot(df[df.index.str.contains('eeg')].to_numpy().flatten(), label='eeg')
+    plt.plot(df[df.index.str.contains('emg')].to_numpy().flatten(), label='emg')
+    plt.plot(df[df.index.str.contains('both')].to_numpy().flatten(), label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Training Loss')
+    if 'loo' in participant:
+        plt.title('Leave One Out Training Loss On {}, Participant {}'.format(type,participant[4]))
+    else:
+        plt.title('Training Loss On {}, Participant {}'.format(type,participant[1]))
+    plt.legend()
+
+def plot_testing_loss(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    
+    plt.figure(figsize=(20,10))
+    plt.plot(df[df.index.str.contains('eeg')].to_numpy().flatten(), label='eeg')
+    plt.plot(df[df.index.str.contains('emg')].to_numpy().flatten(), label='emg')
+    plt.plot(df[df.index.str.contains('both')].to_numpy().flatten(), label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Testing Loss')
+    if 'loo' in participant:
+        plt.title('Leave One Out Testing Loss On {}, Participant {}'.format(type,participant[4]))
+    else:
+        plt.title('Testing Loss On {}, Participant {}'.format(type,participant[1]))
+    plt.legend()
+
+def plot_testing_accuracy_reg(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    plt.figure(figsize=(20,10))
+
+    if 'loo' in participant:
+        plt.title('Leave One Out Testing Accuracy On {}, Participant {}'.format(type,participant[4]))
+        x = np.array([i+1 for i in range(50)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten(), deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten(), deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten(), deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten())
+    else:
+        plt.title('Testing Accuracy On {}, Participant {}'.format(type,participant[1]))
+        x = np.array([i+1 for i in range(25)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25], deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25], deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten()[:25], deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten()[:25])
+    
+    plt.plot(x, meeg*x+beeg, label='eeg')
+    plt.plot(x, memg*x+bemg, label='emg')
+    plt.plot(x, mboth*x+bboth, label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Testing Accuracy')
+    plt.legend()
+
+def plot_training_accuracy_reg(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    plt.figure(figsize=(20,10))
+
+    if 'loo' in participant:
+        plt.title('Leave One Out Training Accuracy On {}, Participant {}'.format(type,participant[4]))
+        x = np.array([i+1 for i in range(50)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten(), deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten(), deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten(), deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten())
+    else:
+        plt.title('Training Accuracy On {}, Participant {}'.format(type,participant[1]))
+        x = np.array([i+1 for i in range(25)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25], deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25], deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten()[:25], deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten()[:25])
+    
+    plt.plot(x, meeg*x+beeg, label='eeg')
+    plt.plot(x, memg*x+bemg, label='emg')
+    plt.plot(x, mboth*x+bboth, label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Training Accuracy')
+    plt.legend()
+
+def plot_testing_loss_reg(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    plt.figure(figsize=(20,10))
+
+    if 'loo' in participant:
+        plt.title('Leave One Out Testing Loss On {}, Participant {}'.format(type,participant[4]))
+        x = np.array([i+1 for i in range(50)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten(), deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten(), deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten(), deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten())
+    else:
+        plt.title('Testing Loss On {}, Participant {}'.format(type,participant[1]))
+        x = np.array([i+1 for i in range(25)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25], deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25], deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten()[:25], deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten()[:25])
+    
+    plt.plot(x, meeg*x+beeg, label='eeg')
+    plt.plot(x, memg*x+bemg, label='emg')
+    plt.plot(x, mboth*x+bboth, label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Testing Loss')
+    plt.legend()
+
+def plot_training_loss_reg(participant, type, dframe):
+    if type == 'weight':
+        df = dframe[dframe.index.str.contains(participant)]
+    if type == 'texture':
+        df = dframe[dframe.index.str.contains(participant)]
+    plt.figure(figsize=(20,10))
+
+    if 'loo' in participant:
+        plt.title('Leave One Out Training Loss On {}, Participant {}'.format(type,participant[4]))
+        x = np.array([i+1 for i in range(50)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten(), deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten(), deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten(), deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten())
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten())
+    else:
+        plt.title('Training Loss On {}, Participant {}'.format(type,participant[1]))
+        x = np.array([i+1 for i in range(25)])
+        meeg, beeg = np.polyfit(x=x, y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25], deg=1)
+        memg, bemg = np.polyfit(x=x, y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25], deg=1)
+        mboth, bboth = np.polyfit(x=x, y=df[df.index.str.contains('both')].to_numpy().flatten()[:25], deg=1)
+        plt.scatter(x=x,y=df[df.index.str.contains('eeg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('emg')].to_numpy().flatten()[:25])
+        plt.scatter(x=x,y=df[df.index.str.contains('both')].to_numpy().flatten()[:25])
+    
+    plt.plot(x, meeg*x+beeg, label='eeg')
+    plt.plot(x, memg*x+bemg, label='emg')
+    plt.plot(x, mboth*x+bboth, label='both')
+    plt.xlabel('Epochs')
+    plt.ylabel('Training Loss')
+    plt.legend()

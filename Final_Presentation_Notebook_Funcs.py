@@ -129,10 +129,10 @@ def return_eeg_emg_averages(data,participant):
     emg_list = calc_averages(data,participant,'emg')
     return eeg_list,emg_list
     
-def plot_emg_diffs(emg_list):
+def plot_emg_diffs(emg_list,pnum):
     fig, ax = plt.subplots(nrows=5, ncols=2,figsize=(30,30))
     fig.subplots_adjust(hspace=.5)
-    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm',fontsize = 30)
+    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm ' + str(pnum),fontsize = 30)
 
     i = 0
     for row in ax[:,0]:
@@ -154,3 +154,29 @@ def plot_emg_diffs(emg_list):
         row.set_ylabel('Amplitude',fontsize = 13)
         i = i + 1
     
+def plot_eeg_diffs(eeg_list,pnum):
+    fig, ax = plt.subplots(nrows=8, ncols=2,figsize=(30,30))
+    fig.subplots_adjust(hspace=.5)
+    fig.suptitle('\n\nAveraged Eeg Differences Between Weights (Left) and Textures (Right) Across Different Scalp Electrodes\nFor Participant ' + str(pnum),fontsize = 30)
+    
+    electrodes = ['FC1','FC2','C3','Cz','C4','CP1','CP2','FC5']
+
+    i = 0
+    for row in ax[:,0]:
+        row.plot(eeg_list[0][electrodes[i]]) #weight 1
+        row.plot(eeg_list[2][electrodes[i]]) #weight 3
+        row.legend(['165 Grams','660 Grams'],prop={'size': 15},loc="upper left")
+        row.set_title(r"$\bf{" + electrodes[i] + "}$" + " Amplitudal Differences Between " + r"$\bf{" + 'Weight' + "}$" + " Classes",fontsize = 18)
+        row.set_xlabel('Sample',fontsize = 13)
+        row.set_ylabel('Amplitude',fontsize = 13)
+        i = i + 1
+
+    i = 0
+    for row in ax[:,1]:
+        row.plot(eeg_list[3][electrodes[i]])  #3
+        row.plot(eeg_list[5][electrodes[i]])  #5
+        row.legend(['Suede','Silk'],prop={'size': 15},loc="upper left")
+        row.set_title(r"$\bf{" + electrodes[i] + "}$" + " Amplitudal Differences Between " + r"$\bf{" + 'Texture' + "}$" + " Classes",fontsize = 18)
+        row.set_xlabel('Sample',fontsize = 13)
+        row.set_ylabel('Amplitude',fontsize = 13)
+        i = i + 1

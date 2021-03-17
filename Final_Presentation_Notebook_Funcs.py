@@ -132,7 +132,7 @@ def return_eeg_emg_averages(data,participant):
 def plot_emg_diffs(emg_list,pnum):
     fig, ax = plt.subplots(nrows=5, ncols=2,figsize=(30,30))
     fig.subplots_adjust(hspace=.5)
-    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm ' + str(pnum),fontsize = 30)
+    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm\n For Participant ' + str(pnum),fontsize = 30)
 
     i = 0
     for row in ax[:,0]:

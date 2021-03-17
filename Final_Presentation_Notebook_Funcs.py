@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 def calc_averages(data,participant,signal):
     
@@ -132,7 +133,7 @@ def return_eeg_emg_averages(data,participant):
 def plot_emg_diffs(emg_list,pnum):
     fig, ax = plt.subplots(nrows=5, ncols=2,figsize=(30,30))
     fig.subplots_adjust(hspace=.5)
-    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm ' + str(pnum),fontsize = 30)
+    fig.suptitle('\n\nAveraged Emg Differences Between Weights (Left) and Textures (Right) Across Different Muscle Electrodes On The Arm\n For Participant ' + str(pnum),fontsize = 30)
 
     i = 0
     for row in ax[:,0]:
@@ -180,3 +181,80 @@ def plot_eeg_diffs(eeg_list,pnum):
         row.set_xlabel('Sample',fontsize = 13)
         row.set_ylabel('Amplitude',fontsize = 13)
         i = i + 1
+        
+
+def plot_eeg_psd_weights(participant): 
+    #plotting Cz and C4
+    
+    cz = 'Cz'
+    c4 = 'C4'
+    
+    eeg_list,_ = nfuncs.return_eeg_emg_averages(data,participant)
+    
+    X1 = np.fft.fft(np.nan_to_num(eeg_list[0][cz]))
+    freq1 = np.fft.fftfreq(n = len(eeg_list[0][cz]),d=1/500)
+
+    X2 = np.fft.fft(np.nan_to_num(eeg_list[2][cz]))
+    freq2 = np.fft.fftfreq(n = len(eeg_list[2][cz]),d=1/500)
+    
+    fig, ax = plt.subplots(nrows=1, ncols=2,figsize=(20,5))
+    fig.subplots_adjust(hspace=.5)
+    fig.suptitle('Eeg PSD Differences Between Weight Classifications of Cz Electrode (Left) and C4 (Right) ',fontsize=15)
+
+    ax[0].semilogy(freq1,np.abs(X1)**2) #weight 1
+    ax[0].semilogy(freq2,np.abs(X2)**2,alpha=.5) #weight 3
+    ax[0].set_xlim([0,250])
+    ax[0].set_xlabel('Frequency (Hz)',fontsize = 12)
+    ax[0].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
+    ax[0].legend(['165 Grams','660 Grams'],prop={'size': 12},loc="upper right")
+    
+    X1 = np.fft.fft(np.nan_to_num(eeg_list[0][c4]))
+    freq1 = np.fft.fftfreq(n = len(eeg_list[0][c4]),d=1/500)
+
+    X2 = np.fft.fft(np.nan_to_num(eeg_list[2][c4]))
+    freq2 = np.fft.fftfreq(n = len(eeg_list[2][c4]),d=1/500)
+
+    ax[1].semilogy(freq1,np.abs(X1)**2) #weight 1
+    ax[1].semilogy(freq2,np.abs(X2)**2,alpha=.5) #weight 3
+    ax[1].set_xlim([0,250])
+    ax[1].set_xlabel('Frequency (Hz)',fontsize = 12)
+    ax[1].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
+    ax[1].legend(['165 Grams','660 Grams'],prop={'size': 12},loc="upper right")
+    
+def plot_eeg_psd_textures(participant): 
+    #plotting Cz and C4
+    
+    cz = 'Cz'
+    c4 = 'C4'
+    
+    eeg_list,_ = nfuncs.return_eeg_emg_averages(data,participant)
+    
+    X1 = np.fft.fft(np.nan_to_num(eeg_list[3][cz]))
+    freq1 = np.fft.fftfreq(n = len(eeg_list[3][cz]),d=1/500)
+
+    X2 = np.fft.fft(np.nan_to_num(eeg_list[5][cz]))
+    freq2 = np.fft.fftfreq(n = len(eeg_list[5][cz]),d=1/500)
+    
+    fig, ax = plt.subplots(nrows=1, ncols=2,figsize=(20,5))
+    fig.subplots_adjust(hspace=.5)
+    fig.suptitle('Eeg PSD Differences Between Texture Classifications of Cz Electrode (Left) and C4 (Right) ',fontsize=15)
+
+    ax[0].semilogy(freq1,np.abs(X1)**2) #weight 1
+    ax[0].semilogy(freq2,np.abs(X2)**2,alpha=.5) #weight 3
+    ax[0].set_xlim([0,250])
+    ax[0].set_xlabel('Frequency (Hz)',fontsize = 12)
+    ax[0].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
+    ax[0].legend(['Suede','Silk'],prop={'size': 12},loc="upper right")
+    
+    X1 = np.fft.fft(np.nan_to_num(eeg_list[3][c4]))
+    freq1 = np.fft.fftfreq(n = len(eeg_list[3][c4]),d=1/500)
+
+    X2 = np.fft.fft(np.nan_to_num(eeg_list[5][c4]))
+    freq2 = np.fft.fftfreq(n = len(eeg_list[5][c4]),d=1/500)
+
+    ax[1].semilogy(freq1,np.abs(X1)**2) #weight 1
+    ax[1].semilogy(freq2,np.abs(X2)**2,alpha=.5) #weight 3
+    ax[1].set_xlim([0,250])
+    ax[1].set_xlabel('Frequency (Hz)',fontsize = 12)
+    ax[1].set_ylabel('Power Spectral Density (dB/Hz)',fontsize=12)
+    ax[1].legend(['Suede','Silk'],prop={'size': 12},loc="upper right")
